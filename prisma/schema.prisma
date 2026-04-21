@@ -3,6 +3,7 @@
 
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
+// TODO: Add payments to schema (User, and new table Payment)
 generator client {
   provider = "prisma-client"
   output   = "../src/generated/prisma"
@@ -25,6 +26,8 @@ model User {
   sessions         Session[]
   graphs           Graph[]
   graphMemberships GraphMembership[]
+  personNodes      PersonNode[]
+  edges            Edge[]
 
   @@map("users")
 }
@@ -70,20 +73,18 @@ model VerificationToken {
 }
 
 model Graph {
-  id          Int          @id @default(autoincrement())
+  id          Int      @id @default(autoincrement())
   title       String
   description String?
-  isPublic    Boolean      @map("is_public")
-  ownerId     String?      @map("owner_id")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @map("updated_at")
+  isPublic    Boolean  @map("is_public")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @map("updated_at")
+
   nodes       PersonNode[]
   edges       Edge[]
-
-  graphMembershipId String
-  userId            String
-  owner             User              @relation(fields: [userId], references: [id])
-  memberships       GraphMembership[]
+  ownerId     String            @map("owner_id")
+  memberships GraphMembership[]
+  owner       User              @relation(fields: [ownerId], references: [id])
 
   @@map("graphs")
 }
@@ -92,26 +93,36 @@ model PersonNode {
   id          Int       @id @default(autoincrement())
   createdAt   DateTime  @default(now()) @map("created_at")
   deletedAt   DateTime? @map("deleted_at")
-  graph       Graph     @relation(fields: [id], references: [id])
   name        String
+  email       String?
+  phone       String?
   description String
   image       String?
   color       String?
+  positionX   Float?
+  positionY   Float?
 
-  sourceEdges Edge[] @relation("SourceEdges")
-  targetEdges Edge[] @relation("TargetEdges")
+  createdBy String
+  edgesFrom Edge[] @relation("EdgeSource")
+  edgesTo   Edge[] @relation("EdgeTarget")
+  creator   User   @relation(fields: [createdBy], references: [id])
+  graph     Graph  @relation(fields: [id], references: [id])
 }
 
 model Edge {
-  id        Int       @id @default(autoincrement())
-  createdAt DateTime  @default(now()) @map("created_at")
-  deletedAt DateTime? @map("deleted_at")
-  graph     Graph     @relation(fields: [id], references: [id])
+  id         Int       @id @default(autoincrement())
+  createdAt  DateTime  @default(now()) @map("created_at")
+  deletedAt  DateTime? @map("deleted_at")
+  isDirected Boolean   @default(false)
+  label      String?
 
+  createdBy    String
   sourceId     Int        @map("source_id")
   targetId     Int        @map("target_id")
-  sourceNodeId PersonNode @relation("SourceEdges", fields: [sourceId], references: [id])
-  targetNodeId PersonNode @relation("TargetEdges", fields: [targetId], references: [id])
+  sourceNodeId PersonNode @relation("EdgeSource", fields: [sourceId], references: [id])
+  targetNodeId PersonNode @relation("EdgeTarget", fields: [targetId], references: [id])
+  graph        Graph      @relation(fields: [id], references: [id])
+  creator      User       @relation(fields: [createdBy], references: [id])
 }
 
 model GraphMembership {
@@ -120,8 +131,10 @@ model GraphMembership {
 
   userId  String @map("user_id")
   graphId Int    @map("graph_id")
-  user    User   @relation(fields: [userId], references: [id])
-  graph   Graph  @relation(fields: [graphId], references: [id])
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  graph   Graph  @relation(fields: [graphId], references: [id], onDelete: Cascade)
+
+  @@unique([graphId, userId])
 }
 
 enum Membership {
