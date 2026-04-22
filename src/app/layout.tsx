@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import { DM_Sans, Inter } from 'next/font/google'
 import './globals.css'
+import Header from '@/components/layout/Header'
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' })
 const dmSans = DM_Sans({ subsets: ['latin'], variable: '--font-heading' })
@@ -20,6 +21,7 @@ export default function RootLayout({
       <body
         className={`${inter.variable} ${dmSans.variable} font-sans bg-cream text-charcoal min-h-full flex flex-col`}
       >
+        <Header />
         {children}
       </body>
     </html>
